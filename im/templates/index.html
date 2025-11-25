@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM系统 - 登录/注册</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 650px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border: 2px solid #333;
+        }
+        h1 {
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #333;
+            font-family: monospace;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 8px 18px;
+            margin: 10px 8px 0 0;
+            border: 2px solid #333;
+            background: white;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #333;
+            color: white;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid red;
+            background: #ffe6e6;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid green;
+            background: #e6ffe6;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            border: 2px solid #333;
+            margin-right: 10px;
+            cursor: pointer;
+            background: white;
+        }
+        .tab.active {
+            background: #333;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .quick-section {
+            margin-top: 30px;
+            border-top: 2px dashed #333;
+            padding-top: 20px;
+        }
+        .saved-account {
+            padding: 10px;
+            border: 1px solid #333;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .saved-account span {
+            font-weight: bold;
+        }
+        .saved-account button {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IM聊天系统</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('login')">登录</div>
+            <div class="tab" onclick="switchTab('register')">注册</div>
+        </div>
+        
+        <div id="message"></div>
+
+        <div class="quick-section">
+            <h2>快捷账号列表（最多5个）</h2>
+            <p>保存常用账号，可一键登录以便课堂演示。数据保存在浏览器 LocalStorage 中，不会同步到服务器。</p>
+            <form id="quickAccountForm" onsubmit="addQuickAccount(event)">
+                <div class="form-group">
+                    <label>用户名:</label>
+                    <input type="text" id="quickUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>密码:</label>
+                    <input type="password" id="quickPassword" required>
+                </div>
+                <button type="submit">保存到快捷列表</button>
+            </form>
+            <div id="quickAccountsList" style="margin-top:15px;"></div>
+        </div>
+        
+        <!-- 登录表单 -->
+        <div id="login-tab" class="tab-content active">
+            <h2>用户登录</h2>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>用户名:</label>
+                    <input type="text" id="loginUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>密码:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit">登录</button>
+            </form>
+        </div>
+        
+        <!-- 注册表单 -->
+        <div id="register-tab" class="tab-content">
+            <h2>用户注册</h2>
+            <form id="registerForm" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>用户名:</label>
+                    <input type="text" id="registerUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>密码:</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                <button type="submit">注册</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const QUICK_STORAGE_KEY = 'debugQuickAccounts';
+        const MAX_QUICK_ACCOUNTS = 5;
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            if (tab === 'login') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('login-tab').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('register-tab').classList.add('active');
+            }
+        }
+
+        function showMessage(text, isError) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = isError ? 'error' : 'success';
+            msgDiv.textContent = text;
+            msgDiv.style.display = 'block';
+        }
+
+        function getQuickAccounts() {
+            try {
+                const stored = localStorage.getItem(QUICK_STORAGE_KEY);
+                return stored ? JSON.parse(stored) : [];
+            } catch (err) {
+                console.warn('读取快捷账号失败', err);
+                return [];
+            }
+        }
+
+        function saveQuickAccounts(accounts) {
+            localStorage.setItem(QUICK_STORAGE_KEY, JSON.stringify(accounts));
+            renderQuickAccounts();
+        }
+
+        function renderQuickAccounts() {
+            const list = document.getElementById('quickAccountsList');
+            const accounts = getQuickAccounts();
+            if (!accounts.length) {
+                list.innerHTML = '<p>暂无快捷账号。</p>';
+                return;
+            }
+            list.innerHTML = accounts.map(acc => `
+                <div class="saved-account">
+                    <span>${acc.username}</span>
+                    <div>
+                        <button type="button" onclick="quickLogin('${acc.username}')">一键登录</button>
+                        <button type="button" onclick="removeQuickAccount('${acc.username}')">移除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addQuickAccount(event) {
+            event.preventDefault();
+            const username = document.getElementById('quickUsername').value.trim();
+            const password = document.getElementById('quickPassword').value;
+            if (!username || !password) {
+                showMessage('用户名和密码不能为空', true);
+                return;
+            }
+            let accounts = getQuickAccounts();
+            const existingIndex = accounts.findIndex(acc => acc.username === username);
+            if (existingIndex !== -1) {
+                accounts[existingIndex].password = password;
+            } else {
+                if (accounts.length >= MAX_QUICK_ACCOUNTS) {
+                    showMessage('最多保存5个账号，请先移除旧账号', true);
+                    return;
+                }
+                accounts.push({ username, password });
+            }
+            saveQuickAccounts(accounts);
+            document.getElementById('quickAccountForm').reset();
+            showMessage('已保存到快捷列表', false);
+        }
+
+        function removeQuickAccount(username) {
+            const accounts = getQuickAccounts().filter(acc => acc.username !== username);
+            saveQuickAccounts(accounts);
+        }
+
+        function storeAccountForQuickLogin(username, password) {
+            if (!username || !password) return;
+            let accounts = getQuickAccounts();
+            const existingIndex = accounts.findIndex(acc => acc.username === username);
+            if (existingIndex !== -1) {
+                accounts[existingIndex].password = password;
+            } else {
+                if (accounts.length >= MAX_QUICK_ACCOUNTS) {
+                    accounts.shift(); // 移除最早的一个
+                }
+                accounts.push({ username, password });
+            }
+            saveQuickAccounts(accounts);
+        }
+
+        async function quickLogin(username) {
+            const accounts = getQuickAccounts();
+            const account = accounts.find(acc => acc.username === username);
+            if (!account) {
+                showMessage('未找到该快捷账号', true);
+                return;
+            }
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: account.username, password: account.password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('登录成功，正在跳转...', false);
+                    setTimeout(() => window.location.href = '/main/', 800);
+                } else {
+                    showMessage('登录失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('请求失败: ' + error.message, true);
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('登录成功！正在跳转...', false);
+                    storeAccountForQuickLogin(username, password);
+                    setTimeout(() => {
+                        window.location.href = '/main/';
+                    }, 1000);
+                } else {
+                    showMessage('登录失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('请求失败: ' + error.message, true);
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('注册成功！正在跳转...', false);
+                    storeAccountForQuickLogin(username, password);
+                    setTimeout(() => {
+                        window.location.href = '/main/';
+                    }, 1000);
+                } else {
+                    showMessage('注册失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('请求失败: ' + error.message, true);
+            }
+        }
+
+        window.onload = function() {
+            renderQuickAccounts();
+        };
+    </script>
+</body>
+</html>
+

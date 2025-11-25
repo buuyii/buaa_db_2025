@@ -15,8 +15,20 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.shortcuts import render
+
+def index_view(request):
+    """登录/注册页面"""
+    return render(request, 'index.html')
+
+def main_view(request):
+    """主界面"""
+    return render(request, 'main.html')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+    path('', index_view, name='index'),
+    path('main/', main_view, name='main'),
 ]

@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM系统 - 主界面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: monospace;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #333;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 18px;
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .header button {
+            padding: 5px 15px;
+            border: 1px solid white;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        .quick-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+        .quick-switch label {
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+        .quick-switch select {
+            padding: 4px 8px;
+            font-family: monospace;
+            border: 1px solid #ccc;
+            background: white;
+            color: #333;
+        }
+        #switch-message {
+            margin: 10px 20px;
+            display: none;
+        }
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 2px solid #333;
+            overflow-y: auto;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .nav-item {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .nav-item:hover {
+            background: #f0f0f0;
+        }
+        .nav-item.active {
+            background: #333;
+            color: white;
+        }
+        .section {
+            display: none;
+            background: white;
+            padding: 20px;
+            border: 2px solid #333;
+        }
+        .section.active {
+            display: block;
+        }
+        .section h2 {
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #333;
+            font-family: monospace;
+        }
+        textarea {
+            min-height: 80px;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 5px 5px 5px 0;
+            border: 2px solid #333;
+            background: white;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #333;
+            color: white;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid;
+        }
+        .error {
+            color: red;
+            border-color: red;
+            background: #ffe6e6;
+        }
+        .success {
+            color: green;
+            border-color: green;
+            background: #e6ffe6;
+        }
+        .info {
+            color: blue;
+            border-color: blue;
+            background: #e6f3ff;
+        }
+        .list-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin: 5px 0;
+            background: #f9f9f9;
+        }
+        .list-item:hover {
+            background: #f0f0f0;
+        }
+        .data-display {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .inline-form {
+            display: inline-block;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>IM聊天系统 - 主界面</h1>
+        <div class="header-controls">
+            <div class="quick-switch">
+                <label for="quickSwitchSelect">快速切换:</label>
+                <select id="quickSwitchSelect">
+                    <option value="">暂无快捷账号</option>
+                </select>
+                <button id="quickSwitchBtn" onclick="quickSwitchAccount()">切换</button>
+                <button type="button" onclick="window.location.href='/'">管理账号</button>
+            </div>
+            <div>
+                <span id="userInfo">加载中...</span>
+                <button onclick="logout()">登出</button>
+            </div>
+        </div>
+    </div>
+    <div id="switch-message" class="message info" style="display:none;"></div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="nav-item active" onclick="showSection('user')">用户信息</div>
+            <div class="nav-item" onclick="showSection('friends')">好友管理</div>
+            <div class="nav-item" onclick="showSection('messages')">消息</div>
+            <div class="nav-item" onclick="showSection('groups')">群组管理</div>
+        </div>
+        
+        <div class="main-content">
+            <!-- 用户信息 -->
+            <div id="user-section" class="section active">
+                <h2>用户信息</h2>
+                <div id="user-info-display" class="data-display">加载中...</div>
+                <h3>修改信息</h3>
+                <form onsubmit="updateUserInfo(event)">
+                    <div class="form-group">
+                        <label>新密码:</label>
+                        <input type="password" id="newPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>显示名称:</label>
+                        <input type="text" id="displayName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>手机号:</label>
+                        <input type="text" id="phone" required>
+                    </div>
+                    <button type="submit">更新信息</button>
+                </form>
+            </div>
+            
+            <!-- 好友管理 -->
+            <div id="friends-section" class="section">
+                <h2>好友管理</h2>
+                <div id="friends-message"></div>
+                
+                <h3>搜索用户</h3>
+                <div class="form-group">
+                    <input type="text" id="searchKeyword" placeholder="输入用户名或显示名称">
+                    <button onclick="searchUsers()">搜索</button>
+                </div>
+                <div id="search-results"></div>
+                
+                <h3>发送好友请求</h3>
+                <form onsubmit="sendFriendRequest(event)">
+                    <div class="form-group">
+                        <label>接收者ID:</label>
+                        <input type="number" id="receiverId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>消息:</label>
+                        <input type="text" id="friendRequestMsg" placeholder="可选">
+                    </div>
+                    <button type="submit">发送请求</button>
+                </form>
+                
+                <h3>好友请求列表</h3>
+                <button onclick="loadFriendRequests()">刷新</button>
+                <div id="friend-requests-display"></div>
+                
+                <h3>好友列表</h3>
+                <button onclick="loadFriends()">刷新</button>
+                <div id="friends-display"></div>
+            </div>
+            
+            <!-- 消息 -->
+            <div id="messages-section" class="section">
+                <h2>消息</h2>
+                <div id="messages-message"></div>
+                
+                <h3>会话列表</h3>
+                <button onclick="loadConversations()">刷新</button>
+                <div id="conversations-display"></div>
+                
+                <h3>发送消息</h3>
+                <form onsubmit="sendMessage(event)">
+                    <div class="form-group">
+                        <label>会话ID:</label>
+                        <input type="number" id="conversationId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>消息内容:</label>
+                        <textarea id="messageContent" required></textarea>
+                    </div>
+                    <button type="submit">发送</button>
+                </form>
+                
+                <h3>查看消息</h3>
+                <div class="form-group">
+                    <input type="number" id="viewConversationId" placeholder="会话ID">
+                    <button onclick="loadMessages()">加载消息</button>
+                </div>
+                <div id="messages-display"></div>
+            </div>
+            
+            <!-- 群组管理 -->
+            <div id="groups-section" class="section">
+                <h2>群组管理</h2>
+                <div id="groups-message"></div>
+                
+                <h3>创建群组</h3>
+                <form onsubmit="createGroup(event)">
+                    <div class="form-group">
+                        <label>群组名称:</label>
+                        <input type="text" id="groupName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>人数限制:</label>
+                        <input type="number" id="groupLimit" value="20" min="1" max="200">
+                    </div>
+                    <button type="submit">创建</button>
+                </form>
+                
+                <h3>我的群组</h3>
+                <button onclick="loadGroups()">刷新</button>
+                <div id="groups-display"></div>
+                
+                <h3>邀请入群</h3>
+                <form onsubmit="inviteToGroup(event)">
+                    <div class="form-group">
+                        <label>群组ID:</label>
+                        <input type="number" id="inviteGroupId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>被邀请者ID:</label>
+                        <input type="number" id="inviteeId" required>
+                    </div>
+                    <button type="submit">邀请</button>
+                </form>
+                
+                <h3>修改群组设置</h3>
+                <form onsubmit="modifyGroupOption(event)">
+                    <div class="form-group">
+                        <label>群组ID:</label>
+                        <input type="number" id="modifyGroupId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>群组名称:</label>
+                        <input type="text" id="modifyGroupName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>人数限制:</label>
+                        <input type="number" id="modifyGroupLimit" required>
+                    </div>
+                    <div class="form-group">
+                        <label>允许新成员:</label>
+                        <select id="modifyAllowNew">
+                            <option value="1">是</option>
+                            <option value="0">否</option>
+                        </select>
+                    </div>
+                    <button type="submit">修改</button>
+                </form>
+                
+                <h3>查看群组成员</h3>
+                <div class="form-group">
+                    <input type="number" id="viewGroupId" placeholder="群组ID">
+                    <button onclick="loadGroupMembers()">查看成员</button>
+                </div>
+                <div id="group-members-display"></div>
+                
+                <h3>退出/解散群组</h3>
+                <form onsubmit="exitGroup(event)">
+                    <div class="form-group">
+                        <label>群组ID:</label>
+                        <input type="number" id="exitGroupId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>目标用户ID (留空为自己):</label>
+                        <input type="number" id="exitTargetId" placeholder="留空为自己">
+                    </div>
+                    <button type="submit">退出群组</button>
+                </form>
+                <form onsubmit="dissolveGroup(event)" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label>群组ID:</label>
+                        <input type="number" id="dissolveGroupId" required>
+                    </div>
+                    <button type="submit">解散群组</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        const QUICK_STORAGE_KEY = 'debugQuickAccounts';
+        let switchMsgTimer = null;
+        
+        // 工具函数
+        function showMessage(elementId, text, isError) {
+            const el = document.getElementById(elementId);
+            el.className = isError ? 'error' : 'success';
+            el.textContent = text;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 3000);
+        }
+        
+        function showInfo(elementId, text) {
+            const el = document.getElementById(elementId);
+            el.className = 'info';
+            el.textContent = text;
+            el.style.display = 'block';
+        }
+
+        function getQuickAccountsStored() {
+            try {
+                const stored = localStorage.getItem(QUICK_STORAGE_KEY);
+                return stored ? JSON.parse(stored) : [];
+            } catch (err) {
+                console.warn('读取快捷账号失败', err);
+                return [];
+            }
+        }
+
+        function renderQuickSwitchOptions() {
+            const select = document.getElementById('quickSwitchSelect');
+            const btn = document.getElementById('quickSwitchBtn');
+            if (!select) return;
+            const accounts = getQuickAccountsStored();
+            if (!accounts.length) {
+                select.innerHTML = '<option value=\"\">暂无快捷账号</option>';
+                select.disabled = true;
+                if (btn) btn.disabled = true;
+            } else {
+                select.innerHTML = accounts.map(acc => `<option value=\"${acc.username}\">${acc.username}</option>`).join('');
+                select.disabled = false;
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        function showSwitchMessage(text, isError = false) {
+            const el = document.getElementById('switch-message');
+            if (!el) return;
+            el.className = 'message ' + (isError ? 'error' : 'success');
+            el.textContent = text;
+            el.style.display = 'block';
+            if (switchMsgTimer) {
+                clearTimeout(switchMsgTimer);
+            }
+            switchMsgTimer = setTimeout(() => {
+                el.style.display = 'none';
+            }, 3000);
+        }
+
+        async function quickSwitchAccount() {
+            const select = document.getElementById('quickSwitchSelect');
+            if (!select) return;
+            const username = select.value;
+            if (!username) {
+                showSwitchMessage('请选择快捷账号', true);
+                return;
+            }
+            const accounts = getQuickAccountsStored();
+            const account = accounts.find(acc => acc.username === username);
+            if (!account) {
+                showSwitchMessage('快捷账号不存在', true);
+                renderQuickSwitchOptions();
+                return;
+            }
+            showSwitchMessage('正在切换...', false);
+            try {
+                await apiCall('/logout', 'POST');
+            } catch (e) {
+                // ignore logout errors
+            }
+            try {
+                const res = await apiCall('/login', 'POST', {
+                    username: account.username,
+                    password: account.password
+                });
+                if (res.success) {
+                    showSwitchMessage(`已切换到 ${account.username}`, false);
+                    loadUserInfo();
+                    loadFriends();
+                    loadFriendRequests();
+                    loadConversations();
+                    loadGroups();
+                    document.getElementById('messages-display').innerHTML = '';
+                } else {
+                    showSwitchMessage('切换失败: ' + res.error_msg, true);
+                }
+            } catch (error) {
+                showSwitchMessage('切换失败: ' + error.message, true);
+            }
+        }
+        
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include'
+            };
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            
+            const response = await fetch(API_BASE + endpoint, options);
+            return await response.json();
+        }
+        
+        function showSection(section) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(section + '-section').classList.add('active');
+        }
+        
+        // 用户相关
+        async function loadUserInfo() {
+            try {
+                const data = await apiCall('/user/info');
+                if (data.success) {
+                    const user = data.data;
+                    document.getElementById('userInfo').textContent = 
+                        `用户: ${user.username} (ID: ${user.id})`;
+                    document.getElementById('user-info-display').textContent = 
+                        JSON.stringify(user, null, 2);
+                    if (user.display_name) {
+                        document.getElementById('displayName').value = user.display_name;
+                    }
+                    if (user.phone) {
+                        document.getElementById('phone').value = user.phone;
+                    }
+                } else {
+                    if (data.error_code === 1003) {
+                        window.location.href = '/';
+                    }
+                }
+            } catch (error) {
+                console.error('Load user info error:', error);
+            }
+        }
+        
+        async function updateUserInfo(event) {
+            event.preventDefault();
+            const password = document.getElementById('newPassword').value;
+            const displayName = document.getElementById('displayName').value;
+            const phone = document.getElementById('phone').value;
+            
+            try {
+                const data = await apiCall('/user/update', 'POST', {
+                    password, display_name: displayName, phone
+                });
+                
+                if (data.success) {
+                    showMessage('user-message', '更新成功', false);
+                    loadUserInfo();
+                } else {
+                    showMessage('user-message', '更新失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('user-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function logout() {
+            await apiCall('/logout', 'POST');
+            window.location.href = '/';
+        }
+        
+        // 好友相关
+        async function searchUsers() {
+            const keyword = document.getElementById('searchKeyword').value;
+            if (!keyword) {
+                showMessage('friends-message', '请输入搜索关键词', true);
+                return;
+            }
+            
+            try {
+                const data = await apiCall(`/search/users?keyword=${encodeURIComponent(keyword)}`);
+                if (data.success) {
+                    const results = data.data;
+                    const html = results.map(u => 
+                        `<div class="list-item">
+                            ID: ${u.id}, 用户名: ${u.username}, 显示名: ${u.display_name || '无'}
+                        </div>`
+                    ).join('');
+                    document.getElementById('search-results').innerHTML = html || '<p>无结果</p>';
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+            }
+        }
+        
+        async function sendFriendRequest(event) {
+            event.preventDefault();
+            const receiverId = parseInt(document.getElementById('receiverId').value);
+            const message = document.getElementById('friendRequestMsg').value || '';
+            
+            try {
+                const data = await apiCall('/friend/request', 'POST', {
+                    receiver_id: receiverId,
+                    message
+                });
+                
+                if (data.success) {
+                    showMessage('friends-message', '请求发送成功', false);
+                    loadFriendRequests();
+                } else {
+                    showMessage('friends-message', '发送失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('friends-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function loadFriendRequests() {
+            try {
+                const data = await apiCall('/friend/requests');
+                if (data.success) {
+                    const {received, sent} = data.data;
+                    let html = '<h4>收到的请求:</h4>';
+                    html += received.map(req => `
+                        <div class="list-item">
+                            <div>发送者: ${req.username} (ID: ${req.sender_id})</div>
+                            <div>消息: ${req.message}</div>
+                            <div>状态: ${req.status}</div>
+                            ${req.status === 'pending' ? `
+                                <button onclick="respondFriendRequest(${req.sender_id}, 'accept')">接受</button>
+                                <button onclick="respondFriendRequest(${req.sender_id}, 'reject')">拒绝</button>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                    html += '<h4>发送的请求:</h4>';
+                    html += sent.map(req => `
+                        <div class="list-item">
+                            <div>接收者: ${req.username} (ID: ${req.receiver_id})</div>
+                            <div>消息: ${req.message}</div>
+                            <div>状态: ${req.status}</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('friend-requests-display').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Load friend requests error:', error);
+            }
+        }
+        
+        async function respondFriendRequest(senderId, response) {
+            try {
+                const data = await apiCall('/friend/respond', 'POST', {
+                    sender_id: senderId,
+                    response
+                });
+                
+                if (data.success) {
+                    showMessage('friends-message', '操作成功', false);
+                    loadFriendRequests();
+                    loadFriends();
+                } else {
+                    showMessage('friends-message', '操作失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('friends-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function loadFriends() {
+            try {
+                const data = await apiCall('/friend/list');
+                if (data.success) {
+                    const html = data.data.map(f => `
+                        <div class="list-item">
+                            <div>好友: ${f.username} (ID: ${f.friend_id})</div>
+                            <div>显示名: ${f.display_name || '无'}</div>
+                            <div>会话ID: ${f.conversation_id}</div>
+                            <button onclick="deleteFriend(${f.friend_id})">删除好友</button>
+                            <button onclick="blockUser(${f.friend_id})">屏蔽</button>
+                        </div>
+                    `).join('');
+                    document.getElementById('friends-display').innerHTML = html || '<p>暂无好友</p>';
+                }
+            } catch (error) {
+                console.error('Load friends error:', error);
+            }
+        }
+        
+        async function deleteFriend(friendId) {
+            if (!confirm('确定要删除这个好友吗？')) return;
+            
+            try {
+                const data = await apiCall('/friend/delete', 'POST', { friend_id: friendId });
+                if (data.success) {
+                    showMessage('friends-message', '删除成功', false);
+                    loadFriends();
+                } else {
+                    showMessage('friends-message', '删除失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('friends-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function blockUser(userId) {
+            if (!confirm('确定要屏蔽这个用户吗？')) return;
+            
+            try {
+                const data = await apiCall('/friend/block', 'POST', { blocked_id: userId });
+                if (data.success) {
+                    showMessage('friends-message', '屏蔽成功', false);
+                    loadFriends();
+                } else {
+                    showMessage('friends-message', '屏蔽失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('friends-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        // 消息相关
+        async function loadConversations() {
+            try {
+                const data = await apiCall('/conversation/list');
+                if (data.success) {
+                    let html = '<h4>私聊:</h4>';
+                    html += data.data.private.map(c => `
+                        <div class="list-item">
+                            <div>会话ID: ${c.conversation_id}</div>
+                            <div>对方: ${c.other_username} (ID: ${c.other_user_id})</div>
+                            <button onclick="viewConversation(${c.conversation_id})">查看消息</button>
+                        </div>
+                    `).join('');
+                    html += '<h4>群聊:</h4>';
+                    html += data.data.group.map(c => `
+                        <div class="list-item">
+                            <div>会话ID: ${c.conversation_id}</div>
+                            <div>群组: ${c.group_name} (ID: ${c.group_id})</div>
+                            <div>成员数: ${c.number_of_members}</div>
+                            <button onclick="viewConversation(${c.conversation_id})">查看消息</button>
+                        </div>
+                    `).join('');
+                    document.getElementById('conversations-display').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Load conversations error:', error);
+            }
+        }
+        
+        function viewConversation(conversationId) {
+            document.getElementById('viewConversationId').value = conversationId;
+            loadMessages();
+        }
+        
+        async function sendMessage(event) {
+            event.preventDefault();
+            const conversationId = parseInt(document.getElementById('conversationId').value);
+            const message = document.getElementById('messageContent').value;
+            
+            try {
+                const data = await apiCall('/message/send', 'POST', {
+                    conversation_id: conversationId,
+                    message
+                });
+                
+                if (data.success) {
+                    showMessage('messages-message', '消息发送成功', false);
+                    document.getElementById('messageContent').value = '';
+                    if (conversationId === parseInt(document.getElementById('viewConversationId').value || 0)) {
+                        loadMessages();
+                    }
+                } else {
+                    showMessage('messages-message', '发送失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('messages-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function loadMessages() {
+            const conversationId = document.getElementById('viewConversationId').value;
+            if (!conversationId) {
+                showMessage('messages-message', '请输入会话ID', true);
+                return;
+            }
+            
+            try {
+                const data = await apiCall(`/message/list?conversation_id=${conversationId}`);
+                if (data.success) {
+                    const html = data.data.map(m => `
+                        <div class="list-item">
+                            <div><strong>${m.username || m.display_name || '用户' + m.sender_id}</strong> (${new Date(m.created_at).toLocaleString()})</div>
+                            <div>${m.content}</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('messages-display').innerHTML = html || '<p>暂无消息</p>';
+                }
+            } catch (error) {
+                console.error('Load messages error:', error);
+            }
+        }
+        
+        // 群组相关
+        async function createGroup(event) {
+            event.preventDefault();
+            const groupName = document.getElementById('groupName').value;
+            const limitation = parseInt(document.getElementById('groupLimit').value);
+            
+            try {
+                const data = await apiCall('/group/create', 'POST', {
+                    group_name: groupName,
+                    limitation
+                });
+                
+                if (data.success) {
+                    showMessage('groups-message', `创建成功，群组ID: ${data.data.group_id}`, false);
+                    document.getElementById('groupName').value = '';
+                    loadGroups();
+                } else {
+                    showMessage('groups-message', '创建失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('groups-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function loadGroups() {
+            try {
+                const data = await apiCall('/group/list');
+                if (data.success) {
+                    const html = data.data.map(g => `
+                        <div class="list-item">
+                            <div><strong>${g.group_name}</strong> (ID: ${g.group_id})</div>
+                            <div>会话ID: ${g.conversation_id}</div>
+                            <div>群主: ${g.owner_username} (ID: ${g.owner_id})</div>
+                            <div>成员数: ${g.number_of_members}/${g.limitation}</div>
+                            <div>允许新成员: ${g.allow_new_member ? '是' : '否'}</div>
+                            <div>我的权限: ${g.permission} (3=群主, 2=管理员, 1=成员)</div>
+                            <button onclick="viewGroupMembers(${g.group_id})">查看成员</button>
+                        </div>
+                    `).join('');
+                    document.getElementById('groups-display').innerHTML = html || '<p>暂无群组</p>';
+                }
+            } catch (error) {
+                console.error('Load groups error:', error);
+            }
+        }
+        
+        async function inviteToGroup(event) {
+            event.preventDefault();
+            const groupId = parseInt(document.getElementById('inviteGroupId').value);
+            const inviteeId = parseInt(document.getElementById('inviteeId').value);
+            
+            try {
+                const data = await apiCall('/group/invite', 'POST', {
+                    group_id: groupId,
+                    invitee_id: inviteeId
+                });
+                
+                if (data.success) {
+                    showMessage('groups-message', '邀请成功', false);
+                    loadGroups();
+                } else {
+                    showMessage('groups-message', '邀请失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('groups-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function modifyGroupOption(event) {
+            event.preventDefault();
+            const groupId = parseInt(document.getElementById('modifyGroupId').value);
+            const groupName = document.getElementById('modifyGroupName').value;
+            const limitation = parseInt(document.getElementById('modifyGroupLimit').value);
+            const allowNew = parseInt(document.getElementById('modifyAllowNew').value);
+            
+            try {
+                const data = await apiCall('/group/modify', 'POST', {
+                    group_id: groupId,
+                    group_name: groupName,
+                    limitation,
+                    allow_new_member: allowNew
+                });
+                
+                if (data.success) {
+                    showMessage('groups-message', '修改成功', false);
+                    loadGroups();
+                } else {
+                    showMessage('groups-message', '修改失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('groups-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function viewGroupMembers(groupId) {
+            document.getElementById('viewGroupId').value = groupId;
+            loadGroupMembers();
+        }
+        
+        async function loadGroupMembers() {
+            const groupId = document.getElementById('viewGroupId').value;
+            if (!groupId) {
+                showMessage('groups-message', '请输入群组ID', true);
+                return;
+            }
+            
+            try {
+                const data = await apiCall(`/group/members?group_id=${groupId}`);
+                if (data.success) {
+                    const html = data.data.map(m => `
+                        <div class="list-item">
+                            <div>${m.username} (ID: ${m.uid})</div>
+                            <div>显示名: ${m.display_name || '无'}</div>
+                            <div>昵称: ${m.nickname || '无'}</div>
+                            <div>权限: ${m.permission} (3=群主, 2=管理员, 1=成员)</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('group-members-display').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Load group members error:', error);
+            }
+        }
+        
+        async function exitGroup(event) {
+            event.preventDefault();
+            const groupId = parseInt(document.getElementById('exitGroupId').value);
+            const targetId = document.getElementById('exitTargetId').value;
+            
+            try {
+                const data = await apiCall('/group/exit', 'POST', {
+                    group_id: groupId,
+                    target_id: targetId ? parseInt(targetId) : undefined
+                });
+                
+                if (data.success) {
+                    showMessage('groups-message', '操作成功', false);
+                    loadGroups();
+                } else {
+                    showMessage('groups-message', '操作失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('groups-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        async function dissolveGroup(event) {
+            event.preventDefault();
+            if (!confirm('确定要解散这个群组吗？')) return;
+            
+            const groupId = parseInt(document.getElementById('dissolveGroupId').value);
+            
+            try {
+                const data = await apiCall('/group/dissolve', 'POST', {
+                    group_id: groupId
+                });
+                
+                if (data.success) {
+                    showMessage('groups-message', '解散成功', false);
+                    loadGroups();
+                } else {
+                    showMessage('groups-message', '解散失败: ' + data.error_msg, true);
+                }
+            } catch (error) {
+                showMessage('groups-message', '请求失败: ' + error.message, true);
+            }
+        }
+        
+        window.addEventListener('storage', (event) => {
+            if (event.key === QUICK_STORAGE_KEY) {
+                renderQuickSwitchOptions();
+            }
+        });
+        
+        // 初始化
+        window.onload = function() {
+            renderQuickSwitchOptions();
+            loadUserInfo();
+            loadFriends();
+            loadFriendRequests();
+            loadConversations();
+            loadGroups();
+        };
+    </script>
+</body>
+</html>
+
